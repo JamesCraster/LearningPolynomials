@@ -4,7 +4,7 @@ import random
 import matplotlib.pyplot as plt
 
 # usually noise standard deviation is set to a small value, e.g 0.1
-noise_sd = 0.2
+noise_sd = 0.3
 
 def pattern(input_value):
     return math.sin(input_value * 2 * math.pi)
@@ -24,7 +24,7 @@ validation_set_size = 10
 validation_inputs, validation_values = list(zip(*sorted([generate_training_value() for i in range(0,validation_set_size)])))
 
 min_model_size = 3
-max_model_size = 9
+max_model_size = 10
 fig, axs = plt.subplots(max_model_size - min_model_size, figsize=(12, 9))
 fig.tight_layout()
 
@@ -56,8 +56,9 @@ for size_increment in range(0, max_model_size - min_model_size):
     T = np.array([np.sum(np.array(training_values) * (np.array(training_inputs) ** n)) for n in range(0,model_size)]).T
 
     A = [[sum((np.array(training_inputs) ** j) * (np.array(training_inputs) ** i)) for j in range(0,model_size)] for i in range(0, model_size)]
+    regularisation_constant =  0.0003
 
-    A_inv = np.linalg.inv(A)
+    A_inv = np.linalg.inv(np.array(A) + np.identity(len(A)) * regularisation_constant) # not sure if this is really the right way to compute regularisation
 
     optimal_parameters = np.matmul(A_inv, T)
 
@@ -88,10 +89,10 @@ for ax in axs:
 
 # stop the suptitle overlapping with the subplots
 fig.subplots_adjust(top=0.95)
-fig.suptitle('Learning sin(2πx) using a M-order polynomial model (no regularisation)')
+fig.suptitle(f'Learning sin(2πx) using a M-order polynomial model (regularisation constant = {regularisation_constant})')
 plt.show()
 
-plt.title('Learning curves')
+plt.title(f'Learning curve (regularisation constant = {regularisation_constant})')
 plt.plot(*list(zip(*model_errors)), '-o', label='Training error')
 plt.plot(*list(zip(*validation_errors)), '-o', label='Validation error')
 plt.legend()
