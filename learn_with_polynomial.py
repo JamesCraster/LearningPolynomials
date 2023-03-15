@@ -23,8 +23,8 @@ training_values = training_data[1]
 validation_set_size = 10
 validation_inputs, validation_values = list(zip(*sorted([generate_training_value() for i in range(0,validation_set_size)])))
 
-min_model_size = 3
-max_model_size = 10
+min_model_size = 6
+max_model_size = 15
 fig, axs = plt.subplots(max_model_size - min_model_size, figsize=(12, 9))
 fig.tight_layout()
 
@@ -48,17 +48,19 @@ def root_mean_square(prediction_model, inputs, values):
 
 coefficient_sizes = []
 
-for size_increment in range(0, max_model_size - min_model_size):
-    model_size = min_model_size + size_increment
-    
+regularisation_constant = 0.0002
+def generate_prediction_model(model_size: int, regularisation_constant):
     # We use least-squares error here, which has a unique minimum for our model. This minimum occurs when the equation Aw = T is satisfied, where
     # w are the coefficients of our polynomial model.
     T = np.array([np.sum(np.array(training_values) * (np.array(training_inputs) ** n)) for n in range(0,model_size)]).T
 
     A = [[sum((np.array(training_inputs) ** j) * (np.array(training_inputs) ** i)) for j in range(0,model_size)] for i in range(0, model_size)]
-    regularisation_constant =  0.0003
+    regularisation_matrix = np.identity(len(A)) * regularisation_constant
 
-    A_inv = np.linalg.inv(np.array(A) + np.identity(len(A)) * regularisation_constant) # not sure if this is really the right way to compute regularisation
+    regularisation_matrix[0,0] = 1 # the coefficient for w0 in the regulariser relies on the choice of origin for the target variables,
+                                   # so we choose not to include it. 
+    
+    A_inv = np.linalg.inv(np.array(A) + regularisation_matrix) # not sure if this is really the right way to compute regularisation
 
     optimal_parameters = np.matmul(A_inv, T)
 
@@ -71,6 +73,13 @@ for size_increment in range(0, max_model_size - min_model_size):
         for i in range(0,model_size):
             output += optimal_parameters[i] * input_value ** i
         return output
+    return prediction_model
+
+
+for size_increment in range(0, max_model_size - min_model_size):
+    model_size = min_model_size + size_increment
+    
+    prediction_model = generate_prediction_model(model_size, regularisation_constant)
 
     # make plot of predictions over entire range
     pattern_prediction_values = list(map(prediction_model, pattern_inputs))
@@ -102,6 +111,23 @@ plt.title('Largest coefficient as model size increases')
 plt.plot(*list(zip(*coefficient_sizes)), '-o')
 plt.show()
 
+# show how changing the regularisation constant affects the training and validation errors 
+# for a model of size M
 
+model_errors = []
+validation_errors = []
+model_size = 15
+for regularisation_constant in np.arange(0, 0.010, 0.0002):
+    prediction_model = generate_prediction_model(model_size, regularisation_constant)
+    # keep track of the training error
+    model_errors.append((regularisation_constant, root_mean_square(prediction_model, training_inputs, training_values)))
+    
+    # generate the validation error
+    validation_errors.append((regularisation_constant, root_mean_square(prediction_model, validation_inputs, validation_values)))
+
+plt.title('Effect of regularisation constant on learning errors')
+plt.plot(*list(zip(*model_errors)), '-o', label='Training error')
+plt.plot(*list(zip(*validation_errors)), '-o', label='Validation error')
+plt.show()
 
 
